@@ -1,0 +1,188 @@
+{
+  "scenario": "deployment_failure_checkout",
+  "description": "Deployment of checkout-service v3.1.0 failed mid-rollout due to missing environment variable",
+
+  "servicenow": {
+    "incident": {
+      "id": "INC0012500",
+      "number": "INC0012500",
+      "title": "Failed deployment — checkout-service v3.1.0",
+      "short_description": "Failed deployment — checkout-service v3.1.0",
+      "description": "checkout-service v3.1.0 deployment failed mid-rollout. 3 of 8 instances on new version with failing health checks. 5 instances still on v3.0.9 and healthy.",
+      "status": "new",
+      "severity": "high",
+      "category": "deployment",
+      "assigned_to": "Sarah Lee",
+      "created_at": "2026-01-22T16:45:00Z"
+    },
+    "recent_changes": [
+      {
+        "id": "CHG0004700",
+        "number": "CHG0004700",
+        "description": "Deploy checkout-service v3.1.0 to production (rolling update)",
+        "status": "in_progress",
+        "created_at": "2026-01-22T16:30:00Z",
+        "closed_at": null,
+        "requested_by": "deploy-bot",
+        "category": "deployment"
+      },
+      {
+        "id": "CHG0004695",
+        "number": "CHG0004695",
+        "description": "Add PAYMENT_GATEWAY_V2_URL to staging environment config",
+        "status": "closed",
+        "created_at": "2026-01-22T14:00:00Z",
+        "closed_at": "2026-01-22T14:10:00Z",
+        "requested_by": "Sarah Lee",
+        "category": "configuration"
+      }
+    ],
+    "knowledge_base": [
+      {
+        "id": "KB0001400",
+        "title": "Deployment Rollback Procedure",
+        "content": "For failed deployments: 1) Halt the rollout, 2) Verify healthy instance count, 3) Check logs on failing instances for root cause, 4) Initiate rollback to previous stable version, 5) Verify all instances healthy post-rollback.",
+        "category": "deployment",
+        "relevance_score": 0.96
+      }
+    ]
+  },
+
+  "datadog": {
+    "alerts": [
+      {
+        "id": "alert-deploy-001",
+        "name": "Health Check Failures — checkout-service",
+        "host": "checkout-service",
+        "value": 3.0,
+        "threshold": 0.0,
+        "status": "triggered",
+        "severity": "high",
+        "triggered_at": "2026-01-22T16:42:00Z",
+        "tags": {"env": "production", "service": "checkout-service", "team": "commerce"}
+      },
+      {
+        "id": "alert-deploy-002",
+        "name": "Error Rate Spike — checkout-service",
+        "host": "checkout-service",
+        "value": 38.0,
+        "threshold": 5.0,
+        "status": "triggered",
+        "severity": "high",
+        "triggered_at": "2026-01-22T16:43:00Z",
+        "tags": {"env": "production", "service": "checkout-service", "team": "commerce"}
+      }
+    ],
+    "metrics": {
+      "healthy_instances": [
+        {"timestamp": "2026-01-22T16:20:00Z", "value": 8.0},
+        {"timestamp": "2026-01-22T16:25:00Z", "value": 8.0},
+        {"timestamp": "2026-01-22T16:30:00Z", "value": 8.0},
+        {"timestamp": "2026-01-22T16:35:00Z", "value": 7.0},
+        {"timestamp": "2026-01-22T16:40:00Z", "value": 6.0},
+        {"timestamp": "2026-01-22T16:45:00Z", "value": 5.0}
+      ],
+      "error_rate": [
+        {"timestamp": "2026-01-22T16:20:00Z", "value": 0.2},
+        {"timestamp": "2026-01-22T16:25:00Z", "value": 0.3},
+        {"timestamp": "2026-01-22T16:30:00Z", "value": 0.5},
+        {"timestamp": "2026-01-22T16:35:00Z", "value": 12.0},
+        {"timestamp": "2026-01-22T16:40:00Z", "value": 25.0},
+        {"timestamp": "2026-01-22T16:45:00Z", "value": 38.0}
+      ]
+    },
+    "logs": [
+      {
+        "timestamp": "2026-01-22T16:42:00Z",
+        "level": "error",
+        "host": "checkout-pod-06",
+        "service": "checkout-service",
+        "message": "FATAL: Required environment variable PAYMENT_GATEWAY_V2_URL is not set. Exiting.",
+        "attributes": {"version": "3.1.0", "exit_code": 1}
+      },
+      {
+        "timestamp": "2026-01-22T16:40:00Z",
+        "level": "error",
+        "host": "checkout-pod-07",
+        "service": "checkout-service",
+        "message": "FATAL: Required environment variable PAYMENT_GATEWAY_V2_URL is not set. Exiting.",
+        "attributes": {"version": "3.1.0", "exit_code": 1}
+      },
+      {
+        "timestamp": "2026-01-22T16:38:00Z",
+        "level": "error",
+        "host": "checkout-pod-08",
+        "service": "checkout-service",
+        "message": "FATAL: Required environment variable PAYMENT_GATEWAY_V2_URL is not set. Exiting.",
+        "attributes": {"version": "3.1.0", "exit_code": 1}
+      },
+      {
+        "timestamp": "2026-01-22T16:35:00Z",
+        "level": "info",
+        "host": "checkout-pod-06",
+        "service": "checkout-service",
+        "message": "Starting checkout-service v3.1.0...",
+        "attributes": {"version": "3.1.0", "deploy_id": "CHG0004700"}
+      }
+    ],
+    "host_info": {
+      "hostname": "checkout-pod-06",
+      "instance_id": "i-0chk789ghi012",
+      "instance_type": "m5.large",
+      "state": "running",
+      "ip_address": "10.0.3.26",
+      "region": "us-east-1",
+      "tags": {"env": "production", "service": "checkout-service", "version": "3.1.0"}
+    }
+  },
+
+  "pagerduty": {
+    "incidents": [
+      {
+        "id": "P3456",
+        "title": "Deployment failure — checkout-service v3.1.0 (3 unhealthy instances)",
+        "status": "triggered",
+        "urgency": "high",
+        "service": "Commerce Platform",
+        "assigned_to": "Sarah Lee",
+        "created_at": "2026-01-22T16:43:00Z"
+      }
+    ],
+    "on_call": {
+      "user": "Sarah Lee",
+      "schedule": "Commerce On-Call",
+      "start": "2026-01-22T08:00:00Z",
+      "end": "2026-01-23T08:00:00Z",
+      "escalation_level": 1
+    }
+  },
+
+  "aws": {
+    "instance": {
+      "hostname": "checkout-pod-06",
+      "instance_id": "i-0chk789ghi012",
+      "instance_type": "m5.large",
+      "state": "running",
+      "ip_address": "10.0.3.26",
+      "region": "us-east-1",
+      "tags": {"env": "production", "service": "checkout-service", "version": "3.1.0", "Name": "checkout-pod-06"}
+    },
+    "top_processes": [
+      {"pid": 1, "name": "init", "cpu_percent": 0.1, "memory_percent": 0.2, "user": "root", "command": "/sbin/init"},
+      {"pid": 100, "name": "containerd", "cpu_percent": 1.2, "memory_percent": 2.5, "user": "root", "command": "/usr/bin/containerd"},
+      {"pid": 500, "name": "node", "cpu_percent": 0.0, "memory_percent": 0.0, "user": "app", "command": "node /app/server.js (EXITED)"},
+      {"pid": 9001, "name": "node_exporter", "cpu_percent": 0.2, "memory_percent": 0.1, "user": "prometheus", "command": "/usr/bin/node_exporter"}
+    ]
+  },
+
+  "slack": {
+    "channels": [
+      {"id": "C001", "name": "incidents", "purpose": "Active incident coordination"},
+      {"id": "C004", "name": "deploy-notifications", "purpose": "Deployment status updates"}
+    ],
+    "recent_messages": [
+      {"id": "msg-020", "channel": "deploy-notifications", "text": ":x: Deployment checkout-service v3.1.0 — 3 instances UNHEALTHY. Rollout paused.", "author": "Deploy Bot", "timestamp": "2026-01-22T16:43:00Z"},
+      {"id": "msg-021", "channel": "deploy-notifications", "text": ":arrow_forward: Rolling update started: checkout-service v3.0.9 → v3.1.0 (8 instances)", "author": "Deploy Bot", "timestamp": "2026-01-22T16:30:00Z"}
+    ]
+  }
+}

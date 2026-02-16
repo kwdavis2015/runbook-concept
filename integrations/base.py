@@ -96,6 +96,22 @@ class AlertingProvider(ABC):
         ...
 
 
+class ComputeProvider(ABC):
+    """Interface for compute/infrastructure systems (AWS EC2, SSH)."""
+
+    @abstractmethod
+    async def get_host_info(self, hostname: str) -> HostInfo:
+        ...
+
+    @abstractmethod
+    async def get_top_processes(self, hostname: str, limit: int = 10) -> list[ProcessInfo]:
+        ...
+
+    @abstractmethod
+    async def restart_service(self, hostname: str, service: str) -> dict:
+        ...
+
+
 class CommunicationProvider(ABC):
     """Interface for communication/notification systems (Slack)."""
 

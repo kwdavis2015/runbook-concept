@@ -15,21 +15,22 @@
 | Basic Streamlit app shell | ✅ Complete | st.navigation multi-page layout, session state, stub pages & components |
 | Settings page | ✅ Complete | Toggle mock/live, select scenario, view integration status |
 
-### Phase 2: Mock Services ⬜
+### Phase 2: Mock Services ✅
 > Complete mock layer with scenario-driven fixtures
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Mock ServiceNow provider | ⬜ Not started | Incidents, changes, knowledge base |
-| Mock Datadog provider | ⬜ Not started | Alerts, metrics, logs |
-| Mock PagerDuty provider | ⬜ Not started | Incidents, on-call |
-| Mock AWS provider | ⬜ Not started | Instances, processes, CloudWatch |
-| Mock Slack provider | ⬜ Not started | Messages, channels |
-| Scenario: High CPU | ⬜ Not started | Full fixture data across all integrations |
-| Scenario: Database Connection | ⬜ Not started | |
-| Scenario: Deployment Failure | ⬜ Not started | |
-| Scenario: Network Latency | ⬜ Not started | |
-| Mock delay simulation | ⬜ Not started | Configurable artificial latency |
+| Mock base class & scenario loader | ✅ Complete | Shared MockBase with JSON fixture loading and configurable delays |
+| Mock ServiceNow provider | ✅ Complete | Incidents, changes, knowledge base |
+| Mock Datadog provider | ✅ Complete | Alerts, metrics, logs, host info |
+| Mock PagerDuty provider | ✅ Complete | Incidents, on-call, acknowledgement |
+| Mock AWS provider | ✅ Complete | Instances, processes, service restart |
+| Mock Slack provider | ✅ Complete | Messages, channels, session-persistent sent messages |
+| Scenario: High CPU | ✅ Complete | Memory leak after deploy on prod-web-03 |
+| Scenario: Database Connection | ✅ Complete | Connection pool exhaustion on db-primary-01 |
+| Scenario: Deployment Failure | ✅ Complete | checkout-service v3.1.0 partial rollout failure |
+| Scenario: Network Latency | ✅ Complete | EU latency from CDN misconfiguration |
+| Mock delay simulation | ✅ Complete | Per-provider delays, toggled via MOCK_DELAY_ENABLED |
 
 ### Phase 3: ML Engine ⬜
 > LLM-powered classification, diagnosis, and recommendation

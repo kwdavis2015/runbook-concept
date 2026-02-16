@@ -1,0 +1,195 @@
+{
+  "scenario": "network_latency_eu_region",
+  "description": "EU users experiencing 3x normal latency due to CDN misconfiguration routing traffic through US-East",
+
+  "servicenow": {
+    "incident": {
+      "id": "INC0012600",
+      "number": "INC0012600",
+      "title": "High latency for EU region users",
+      "short_description": "High latency for EU region users",
+      "description": "Users in EU region reporting page load times of 6-8 seconds (normal: 1-2 seconds). Issue started approximately 1 hour ago. US region unaffected.",
+      "status": "new",
+      "severity": "high",
+      "category": "network",
+      "assigned_to": "Alex Rivera",
+      "created_at": "2026-01-25T11:30:00Z"
+    },
+    "recent_changes": [
+      {
+        "id": "CHG0004800",
+        "number": "CHG0004800",
+        "description": "Update CDN routing rules for cost optimization",
+        "status": "closed",
+        "created_at": "2026-01-25T10:15:00Z",
+        "closed_at": "2026-01-25T10:30:00Z",
+        "requested_by": "infra-team",
+        "category": "network"
+      },
+      {
+        "id": "CHG0004790",
+        "number": "CHG0004790",
+        "description": "Renew TLS certificates for *.example.com",
+        "status": "closed",
+        "created_at": "2026-01-24T09:00:00Z",
+        "closed_at": "2026-01-24T09:30:00Z",
+        "requested_by": "security-team",
+        "category": "security"
+      }
+    ],
+    "knowledge_base": [
+      {
+        "id": "KB0001500",
+        "title": "CDN and Latency Troubleshooting",
+        "content": "For region-specific latency issues: 1) Check CDN routing configuration for the affected region, 2) Verify edge node availability, 3) Compare recent CDN config changes, 4) Check for DNS propagation issues, 5) Revert recent CDN changes if correlated.",
+        "category": "network",
+        "relevance_score": 0.94
+      }
+    ]
+  },
+
+  "datadog": {
+    "alerts": [
+      {
+        "id": "alert-latency-001",
+        "name": "EU Region Latency Critical",
+        "host": "cdn-eu-west",
+        "value": 4500.0,
+        "threshold": 2000.0,
+        "status": "triggered",
+        "severity": "high",
+        "triggered_at": "2026-01-25T10:45:00Z",
+        "tags": {"env": "production", "region": "eu-west-1", "service": "cdn"}
+      },
+      {
+        "id": "alert-latency-002",
+        "name": "EU P99 Response Time Elevated",
+        "host": "api-gateway-eu",
+        "value": 6200.0,
+        "threshold": 3000.0,
+        "status": "triggered",
+        "severity": "high",
+        "triggered_at": "2026-01-25T10:50:00Z",
+        "tags": {"env": "production", "region": "eu-west-1", "service": "api-gateway"}
+      }
+    ],
+    "metrics": {
+      "latency_eu": [
+        {"timestamp": "2026-01-25T09:30:00Z", "value": 180.0},
+        {"timestamp": "2026-01-25T09:45:00Z", "value": 175.0},
+        {"timestamp": "2026-01-25T10:00:00Z", "value": 190.0},
+        {"timestamp": "2026-01-25T10:15:00Z", "value": 210.0},
+        {"timestamp": "2026-01-25T10:30:00Z", "value": 1850.0},
+        {"timestamp": "2026-01-25T10:45:00Z", "value": 4500.0},
+        {"timestamp": "2026-01-25T11:00:00Z", "value": 4800.0},
+        {"timestamp": "2026-01-25T11:15:00Z", "value": 4600.0},
+        {"timestamp": "2026-01-25T11:30:00Z", "value": 4700.0}
+      ],
+      "latency_us": [
+        {"timestamp": "2026-01-25T09:30:00Z", "value": 85.0},
+        {"timestamp": "2026-01-25T09:45:00Z", "value": 82.0},
+        {"timestamp": "2026-01-25T10:00:00Z", "value": 88.0},
+        {"timestamp": "2026-01-25T10:15:00Z", "value": 84.0},
+        {"timestamp": "2026-01-25T10:30:00Z", "value": 86.0},
+        {"timestamp": "2026-01-25T10:45:00Z", "value": 83.0},
+        {"timestamp": "2026-01-25T11:00:00Z", "value": 87.0},
+        {"timestamp": "2026-01-25T11:15:00Z", "value": 85.0},
+        {"timestamp": "2026-01-25T11:30:00Z", "value": 84.0}
+      ]
+    },
+    "logs": [
+      {
+        "timestamp": "2026-01-25T11:25:00Z",
+        "level": "warning",
+        "host": "api-gateway-eu",
+        "service": "api-gateway",
+        "message": "Upstream response time 4.8s for request to origin via us-east-1 (expected eu-west-1)",
+        "attributes": {"origin_region": "us-east-1", "expected_region": "eu-west-1", "response_time_ms": 4800}
+      },
+      {
+        "timestamp": "2026-01-25T11:00:00Z",
+        "level": "warning",
+        "host": "cdn-eu-west",
+        "service": "cdn",
+        "message": "Cache MISS rate 95% — traffic being routed to origin in us-east-1",
+        "attributes": {"cache_hit_rate": 0.05, "routing_target": "us-east-1"}
+      },
+      {
+        "timestamp": "2026-01-25T10:30:00Z",
+        "level": "info",
+        "host": "cdn-eu-west",
+        "service": "cdn",
+        "message": "CDN routing configuration updated. New rules applied.",
+        "attributes": {"change_id": "CHG0004800", "modified_by": "infra-team"}
+      },
+      {
+        "timestamp": "2026-01-25T10:30:00Z",
+        "level": "info",
+        "host": "cdn-eu-west",
+        "service": "cdn",
+        "message": "EU-West routing rule changed: origin override set to us-east-1-origin.example.com",
+        "attributes": {"old_origin": "eu-west-1-origin.example.com", "new_origin": "us-east-1-origin.example.com"}
+      }
+    ],
+    "host_info": {
+      "hostname": "cdn-eu-west",
+      "instance_id": "i-0cdn456jkl789",
+      "instance_type": "c5.2xlarge",
+      "state": "running",
+      "ip_address": "10.1.1.10",
+      "region": "eu-west-1",
+      "tags": {"env": "production", "service": "cdn", "role": "edge-node", "region": "eu-west-1"}
+    }
+  },
+
+  "pagerduty": {
+    "incidents": [
+      {
+        "id": "P4567",
+        "title": "EU region latency 3x normal — CDN routing issue suspected",
+        "status": "triggered",
+        "urgency": "high",
+        "service": "CDN / Network",
+        "assigned_to": "Alex Rivera",
+        "created_at": "2026-01-25T10:46:00Z"
+      }
+    ],
+    "on_call": {
+      "user": "Alex Rivera",
+      "schedule": "Infrastructure On-Call",
+      "start": "2026-01-25T08:00:00Z",
+      "end": "2026-01-26T08:00:00Z",
+      "escalation_level": 1
+    }
+  },
+
+  "aws": {
+    "instance": {
+      "hostname": "cdn-eu-west",
+      "instance_id": "i-0cdn456jkl789",
+      "instance_type": "c5.2xlarge",
+      "state": "running",
+      "ip_address": "10.1.1.10",
+      "region": "eu-west-1",
+      "tags": {"env": "production", "service": "cdn", "role": "edge-node", "Name": "cdn-eu-west"}
+    },
+    "top_processes": [
+      {"pid": 2001, "name": "nginx", "cpu_percent": 35.2, "memory_percent": 12.4, "user": "www-data", "command": "nginx: worker process"},
+      {"pid": 2002, "name": "nginx", "cpu_percent": 33.8, "memory_percent": 11.9, "user": "www-data", "command": "nginx: worker process"},
+      {"pid": 2000, "name": "nginx", "cpu_percent": 1.0, "memory_percent": 0.5, "user": "root", "command": "nginx: master process /usr/sbin/nginx"},
+      {"pid": 3001, "name": "varnish", "cpu_percent": 8.5, "memory_percent": 25.3, "user": "varnish", "command": "varnishd -a :6081"},
+      {"pid": 9001, "name": "node_exporter", "cpu_percent": 0.2, "memory_percent": 0.1, "user": "prometheus", "command": "/usr/bin/node_exporter"}
+    ]
+  },
+
+  "slack": {
+    "channels": [
+      {"id": "C001", "name": "incidents", "purpose": "Active incident coordination"},
+      {"id": "C005", "name": "infra-alerts", "purpose": "Infrastructure team alerts"}
+    ],
+    "recent_messages": [
+      {"id": "msg-030", "channel": "infra-alerts", "text": ":globe_with_meridians: EU region latency alert: p50=4500ms (threshold: 2000ms). US region normal.", "author": "Datadog Bot", "timestamp": "2026-01-25T10:45:00Z"},
+      {"id": "msg-031", "channel": "infra-alerts", "text": ":memo: CDN configuration change applied (CHG0004800) — routing rules updated for cost optimization", "author": "Deploy Bot", "timestamp": "2026-01-25T10:30:00Z"}
+    ]
+  }
+}

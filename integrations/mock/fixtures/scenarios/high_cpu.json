@@ -1,0 +1,191 @@
+{
+  "scenario": "high_cpu_web_server",
+  "description": "Production web server CPU spike caused by memory leak after deploy",
+
+  "servicenow": {
+    "incident": {
+      "id": "INC0012345",
+      "number": "INC0012345",
+      "title": "High CPU on prod-web-03",
+      "short_description": "High CPU on prod-web-03",
+      "description": "Production web server prod-web-03 reporting sustained CPU usage above 90%. Application response times degraded. OOM killer has been invoked.",
+      "status": "new",
+      "severity": "high",
+      "category": "compute",
+      "assigned_to": "Jane Smith",
+      "created_at": "2026-01-15T10:30:00Z"
+    },
+    "recent_changes": [
+      {
+        "id": "CHG0004567",
+        "number": "CHG0004567",
+        "description": "Deploy application v2.14.3 to production web tier",
+        "status": "closed",
+        "created_at": "2026-01-15T08:15:00Z",
+        "closed_at": "2026-01-15T08:45:00Z",
+        "requested_by": "deploy-bot",
+        "category": "deployment"
+      },
+      {
+        "id": "CHG0004550",
+        "number": "CHG0004550",
+        "description": "Update TLS certificates on load balancer",
+        "status": "closed",
+        "created_at": "2026-01-14T14:00:00Z",
+        "closed_at": "2026-01-14T14:30:00Z",
+        "requested_by": "security-team",
+        "category": "security"
+      }
+    ],
+    "knowledge_base": [
+      {
+        "id": "KB0001234",
+        "title": "High CPU Troubleshooting Guide",
+        "content": "When CPU exceeds 90%: 1) Identify top processes, 2) Check for recent deployments, 3) Review application logs for memory leaks, 4) Consider rolling back recent changes.",
+        "category": "compute",
+        "relevance_score": 0.95
+      }
+    ]
+  },
+
+  "datadog": {
+    "alerts": [
+      {
+        "id": "alert-cpu-001",
+        "name": "High CPU Alert",
+        "host": "prod-web-03",
+        "value": 94.2,
+        "threshold": 90.0,
+        "status": "triggered",
+        "severity": "high",
+        "triggered_at": "2026-01-15T10:28:00Z",
+        "tags": {"env": "production", "service": "web-app", "team": "platform"}
+      },
+      {
+        "id": "alert-mem-001",
+        "name": "Memory Usage Warning",
+        "host": "prod-web-03",
+        "value": 87.5,
+        "threshold": 85.0,
+        "status": "triggered",
+        "severity": "medium",
+        "triggered_at": "2026-01-15T10:25:00Z",
+        "tags": {"env": "production", "service": "web-app", "team": "platform"}
+      }
+    ],
+    "metrics": {
+      "cpu": [
+        {"timestamp": "2026-01-15T09:00:00Z", "value": 32.1},
+        {"timestamp": "2026-01-15T09:15:00Z", "value": 34.5},
+        {"timestamp": "2026-01-15T09:30:00Z", "value": 31.8},
+        {"timestamp": "2026-01-15T09:45:00Z", "value": 55.2},
+        {"timestamp": "2026-01-15T10:00:00Z", "value": 72.4},
+        {"timestamp": "2026-01-15T10:15:00Z", "value": 88.1},
+        {"timestamp": "2026-01-15T10:30:00Z", "value": 94.2}
+      ],
+      "memory": [
+        {"timestamp": "2026-01-15T09:00:00Z", "value": 55.0},
+        {"timestamp": "2026-01-15T09:15:00Z", "value": 56.2},
+        {"timestamp": "2026-01-15T09:30:00Z", "value": 57.1},
+        {"timestamp": "2026-01-15T09:45:00Z", "value": 65.3},
+        {"timestamp": "2026-01-15T10:00:00Z", "value": 74.8},
+        {"timestamp": "2026-01-15T10:15:00Z", "value": 82.6},
+        {"timestamp": "2026-01-15T10:30:00Z", "value": 87.5}
+      ]
+    },
+    "logs": [
+      {
+        "timestamp": "2026-01-15T10:28:00Z",
+        "level": "error",
+        "host": "prod-web-03",
+        "service": "web-app",
+        "message": "OOM killer invoked for process java (pid 12345)",
+        "attributes": {"pid": 12345, "signal": "SIGKILL"}
+      },
+      {
+        "timestamp": "2026-01-15T10:25:00Z",
+        "level": "warning",
+        "host": "prod-web-03",
+        "service": "web-app",
+        "message": "GC pause exceeded 5000ms — possible memory leak detected",
+        "attributes": {"gc_pause_ms": 5230, "heap_used_pct": 94}
+      },
+      {
+        "timestamp": "2026-01-15T10:20:00Z",
+        "level": "warning",
+        "host": "prod-web-03",
+        "service": "web-app",
+        "message": "Response time p99 exceeded 3000ms threshold (current: 4200ms)",
+        "attributes": {"p99_ms": 4200, "threshold_ms": 3000}
+      },
+      {
+        "timestamp": "2026-01-15T08:45:00Z",
+        "level": "info",
+        "host": "prod-web-03",
+        "service": "web-app",
+        "message": "Application v2.14.3 deployed successfully. Service restarted.",
+        "attributes": {"version": "2.14.3", "deploy_id": "CHG0004567"}
+      }
+    ],
+    "host_info": {
+      "hostname": "prod-web-03",
+      "instance_id": "i-0abc123def456",
+      "instance_type": "c5.xlarge",
+      "state": "running",
+      "ip_address": "10.0.1.53",
+      "region": "us-east-1",
+      "tags": {"env": "production", "service": "web-app", "team": "platform"}
+    }
+  },
+
+  "pagerduty": {
+    "incidents": [
+      {
+        "id": "P1234",
+        "title": "High CPU on prod-web-03 (94.2%)",
+        "status": "triggered",
+        "urgency": "high",
+        "service": "Production Web Tier",
+        "assigned_to": "Jane Smith",
+        "created_at": "2026-01-15T10:29:00Z"
+      }
+    ],
+    "on_call": {
+      "user": "Jane Smith",
+      "schedule": "Primary On-Call",
+      "start": "2026-01-15T08:00:00Z",
+      "end": "2026-01-16T08:00:00Z",
+      "escalation_level": 1
+    }
+  },
+
+  "aws": {
+    "instance": {
+      "hostname": "prod-web-03",
+      "instance_id": "i-0abc123def456",
+      "instance_type": "c5.xlarge",
+      "state": "running",
+      "ip_address": "10.0.1.53",
+      "region": "us-east-1",
+      "tags": {"env": "production", "service": "web-app", "Name": "prod-web-03"}
+    },
+    "top_processes": [
+      {"pid": 12345, "name": "java", "cpu_percent": 89.3, "memory_percent": 72.1, "user": "app", "command": "java -jar web-app-2.14.3.jar"},
+      {"pid": 12400, "name": "datadog-agent", "cpu_percent": 2.1, "memory_percent": 1.5, "user": "dd-agent", "command": "/opt/datadog-agent/bin/agent run"},
+      {"pid": 1, "name": "systemd", "cpu_percent": 0.1, "memory_percent": 0.3, "user": "root", "command": "/sbin/init"},
+      {"pid": 8821, "name": "node_exporter", "cpu_percent": 0.3, "memory_percent": 0.2, "user": "prometheus", "command": "/usr/bin/node_exporter"},
+      {"pid": 9102, "name": "sshd", "cpu_percent": 0.0, "memory_percent": 0.1, "user": "root", "command": "/usr/sbin/sshd -D"}
+    ]
+  },
+
+  "slack": {
+    "channels": [
+      {"id": "C001", "name": "incidents", "purpose": "Active incident coordination"},
+      {"id": "C002", "name": "platform-alerts", "purpose": "Automated alerting channel"}
+    ],
+    "recent_messages": [
+      {"id": "msg-001", "channel": "platform-alerts", "text": ":rotating_light: HIGH CPU alert on prod-web-03 — 94.2% (threshold: 90%)", "author": "PagerDuty Bot", "timestamp": "2026-01-15T10:29:00Z"},
+      {"id": "msg-002", "channel": "platform-alerts", "text": ":warning: Memory usage warning on prod-web-03 — 87.5% (threshold: 85%)", "author": "Datadog Bot", "timestamp": "2026-01-15T10:25:00Z"}
+    ]
+  }
+}
