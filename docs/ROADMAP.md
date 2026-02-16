@@ -2,18 +2,18 @@
 
 ## Implementation Phases
 
-### Phase 1: Foundation ⬜
+### Phase 1: Foundation ✅
 > Core project structure, data models, and basic Streamlit shell
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Project scaffolding & dependency setup | ⬜ Not started | pyproject.toml, requirements.txt, Makefile |
-| Core data models (Pydantic) | ⬜ Not started | Incident, Action, Finding, Alert, MetricTimeSeries |
-| Abstract integration base classes | ⬜ Not started | TicketingProvider, MonitoringProvider, etc. |
-| Integration registry & factory | ⬜ Not started | Mode-based provider resolution |
-| Configuration system | ⬜ Not started | pydantic-settings, .env loading |
-| Basic Streamlit app shell | ⬜ Not started | Multi-page layout, navigation, session state |
-| Settings page | ⬜ Not started | Toggle mock/live, select scenario |
+| Project scaffolding & dependency setup | ✅ Complete | pyproject.toml, requirements.txt, requirements-dev.txt, Makefile |
+| Core data models (Pydantic) | ✅ Complete | Incident, Action, Finding, Alert, MetricTimeSeries + enums |
+| Abstract integration base classes | ✅ Complete | TicketingProvider, MonitoringProvider, AlertingProvider, CommunicationProvider |
+| Integration registry & factory | ✅ Complete | Mode-based provider resolution with lazy imports |
+| Configuration system | ✅ Complete | pydantic-settings, .env loading, per-integration overrides |
+| Basic Streamlit app shell | ✅ Complete | st.navigation multi-page layout, session state, stub pages & components |
+| Settings page | ✅ Complete | Toggle mock/live, select scenario, view integration status |
 
 ### Phase 2: Mock Services ⬜
 > Complete mock layer with scenario-driven fixtures
