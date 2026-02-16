@@ -263,6 +263,36 @@ class Classification(BaseModel):
     reasoning: str = ""
 
 
+class ActionRecommendation(BaseModel):
+    """A single recommended action from the ML engine."""
+
+    description: str
+    risk_level: RiskLevel = RiskLevel.LOW
+    requires_approval: bool = False
+    integration: str | None = None
+    method: str | None = None
+    params: dict[str, Any] = Field(default_factory=dict)
+    reasoning: str = ""
+
+
+class DiagnosticResult(BaseModel):
+    """Output of the ML diagnostic analyzer."""
+
+    root_cause: str
+    evidence_summary: str
+    confidence: float = 0.0
+    contributing_factors: list[str] = Field(default_factory=list)
+    affected_components: list[str] = Field(default_factory=list)
+
+
+class RecommendationSet(BaseModel):
+    """A ranked set of action recommendations from the ML engine."""
+
+    recommendations: list[ActionRecommendation] = Field(default_factory=list)
+    summary: str = ""
+    requires_immediate_action: bool = False
+
+
 class Incident(BaseModel):
     """Top-level incident tracking all diagnostic activity."""
 

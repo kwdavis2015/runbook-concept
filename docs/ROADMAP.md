@@ -31,19 +31,22 @@
 | Scenario: Deployment Failure | ✅ Complete | checkout-service v3.1.0 partial rollout failure |
 | Scenario: Network Latency | ✅ Complete | EU latency from CDN misconfiguration |
 | Mock delay simulation | ✅ Complete | Per-provider delays, toggled via MOCK_DELAY_ENABLED |
+| Unit tests — models, config, mocks, registry | ✅ Complete | 58 tests covering Phase 1 & 2 deliverables (early Phase 7 work) |
 
-### Phase 3: ML Engine ⬜
+### Phase 3: ML Engine ✅
 > LLM-powered classification, diagnosis, and recommendation
 
 | Task | Status | Notes |
 |------|--------|-------|
-| ML engine interface | ⬜ Not started | Abstract base + Anthropic implementation |
-| Problem classifier | ⬜ Not started | Category + severity from natural language |
-| Diagnostic analyzer | ⬜ Not started | Reason over gathered context |
-| Action recommender | ⬜ Not started | Ranked suggestions with risk levels |
-| Incident summarizer | ⬜ Not started | Timeline → narrative summary |
-| Prompt templates | ⬜ Not started | Diagnosis, resolution, summarization |
-| Mock ML engine (no API key needed) | ⬜ Not started | Canned responses for demo mode |
+| ML response models | ✅ Complete | DiagnosticResult, ActionRecommendation, RecommendationSet in core/models.py |
+| ML engine interface | ✅ Complete | MLEngine ABC + AnthropicEngine concrete implementation |
+| Prompt context builder | ✅ Complete | ml/prompts/context.py — formats integration data for prompt injection |
+| Problem classifier | ✅ Complete | JSON parsing with graceful fallback on parse errors |
+| Diagnostic analyzer | ✅ Complete | Root cause analysis with confidence scoring |
+| Action recommender | ✅ Complete | Ranked suggestions with risk levels and integration targets |
+| Incident summarizer | ✅ Complete | Timeline → narrative prose summary |
+| Prompt templates | ✅ Complete | Diagnosis, resolution, summarization — structured JSON output prompts |
+| Mock ML engine (no API key needed) | ✅ Complete | Scenario-aware canned responses for all 4 scenarios with fallback defaults |
 
 ### Phase 4: Orchestrator ⬜
 > Workflow engine connecting ML, integrations, and human approval
@@ -82,15 +85,16 @@
 | Jira real client | ⬜ Not started | REST API v3 |
 | Slack real client | ⬜ Not started | Bolt SDK |
 
-### Phase 7: Polish & Testing ⬜
+### Phase 7: Polish & Testing 🟡
 > Production readiness
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Unit tests — core models | ⬜ Not started | |
+| Unit tests — core models | ✅ Complete | 19 tests — enums, model creation, defaults, serialization (done early in Phase 2) |
+| Unit tests — config | ✅ Complete | 9 tests — defaults, integration mode overrides (done early in Phase 2) |
+| Unit tests — integrations (mocks + registry) | ✅ Complete | 30 tests — all 5 mock providers, scenario switching, registry resolution, caching (done early in Phase 2) |
 | Unit tests — orchestrator | ⬜ Not started | |
 | Unit tests — ML engine | ⬜ Not started | |
-| Unit tests — integrations | ⬜ Not started | |
 | End-to-end test with mocks | ⬜ Not started | Full scenario walkthrough |
 | Error handling & edge cases | ⬜ Not started | |
 | Loading states & UX polish | ⬜ Not started | |
