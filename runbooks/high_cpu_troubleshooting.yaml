@@ -1,0 +1,85 @@
+name: High CPU Troubleshooting
+description: >
+  Diagnose and remediate high CPU usage on a host. Identifies the top
+  consuming process, correlates with recent deployments, and offers a
+  targeted service restart if warranted.
+trigger: "cpu_usage > 90%"
+severity: high
+category: compute
+tags:
+  - cpu
+  - compute
+  - performance
+
+steps:
+  - id: get_alerts
+    action: gather
+    description: "Pull active monitoring alerts to confirm the CPU spike"
+    integration: monitoring
+    method: get_current_alerts
+    params: {}
+
+  - id: get_host
+    action: gather
+    description: "Retrieve host metadata for the affected server"
+    integration: compute
+    method: get_host_info
+    params:
+      hostname: "{{ incident.metadata.host }}"
+
+  - id: get_top_processes
+    action: gather
+    description: "Identify the top CPU-consuming processes on the host"
+    integration: compute
+    method: get_top_processes
+    params:
+      hostname: "{{ incident.metadata.host }}"
+      limit: 10
+
+  - id: get_recent_changes
+    action: gather
+    description: "Check for deployments or changes in the past 2 hours"
+    integration: ticketing
+    method: get_recent_changes
+    params:
+      timeframe: "2h"
+
+  - id: get_logs
+    action: gather
+    description: "Collect recent application logs from the affected host"
+    integration: monitoring
+    method: get_logs
+    params:
+      query: "error OR exception OR oom"
+      host: "{{ incident.metadata.host }}"
+      limit: 50
+
+  - id: diagnose
+    action: ml_decision
+    description: "Determine root cause and select the target service to restart"
+    context:
+      - get_alerts
+      - get_top_processes
+      - get_recent_changes
+      - get_logs
+
+  - id: restart_service
+    action: execute
+    description: "Restart the offending service on the affected host"
+    integration: compute
+    method: restart_service
+    requires_approval: true
+    risk_level: medium
+    params:
+      hostname: "{{ incident.metadata.host }}"
+      service: "{{ diagnose.target_service }}"
+
+  - id: notify_oncall
+    action: execute
+    description: "Post a resolution note to the incident Slack channel"
+    integration: communication
+    method: send_message
+    risk_level: low
+    params:
+      channel: "incidents"
+      message: "High CPU resolved on {{ incident.metadata.host }} — restarted {{ diagnose.target_service }}"

@@ -1,0 +1,94 @@
+name: Network Troubleshooting
+description: >
+  Investigates elevated latency, packet loss, or cross-region connectivity
+  failures. Correlates network alerts with recent infrastructure changes and
+  CDN/routing configuration updates.
+trigger: "latency_p99 > 500ms OR packet_loss > 1%"
+severity: high
+category: network
+tags:
+  - network
+  - latency
+  - connectivity
+
+steps:
+  - id: get_network_alerts
+    action: gather
+    description: "Pull active network and latency alerts from monitoring"
+    integration: monitoring
+    method: get_current_alerts
+    params: {}
+
+  - id: get_network_metrics
+    action: gather
+    description: "Retrieve latency metrics for the affected region/service"
+    integration: monitoring
+    method: get_metrics
+    params:
+      metric_name: "network.latency.p99"
+      host: "{{ incident.metadata.host }}"
+
+  - id: get_network_logs
+    action: gather
+    description: "Collect logs for connection timeouts and routing errors"
+    integration: monitoring
+    method: get_logs
+    params:
+      query: "connection timeout OR network unreachable OR ICMP OR BGP"
+      limit: 100
+
+  - id: get_infra_changes
+    action: gather
+    description: "Check for recent network or CDN configuration changes"
+    integration: ticketing
+    method: get_recent_changes
+    params:
+      timeframe: "6h"
+
+  - id: get_pagerduty_incidents
+    action: gather
+    description: "Check whether a PagerDuty network incident is already open"
+    integration: alerting
+    method: get_active_incidents
+    params: {}
+
+  - id: search_kb
+    action: gather
+    description: "Search knowledge base for previous network outage resolutions"
+    integration: ticketing
+    method: search_knowledge_base
+    params:
+      query: "network latency CDN routing outage"
+
+  - id: diagnose
+    action: ml_decision
+    description: "Identify affected path, root cause, and recommend mitigation"
+    context:
+      - get_network_alerts
+      - get_network_metrics
+      - get_network_logs
+      - get_infra_changes
+      - get_pagerduty_incidents
+      - search_kb
+
+  - id: notify_oncall
+    action: execute
+    description: "Alert networking on-call team with diagnosis"
+    integration: communication
+    method: send_message
+    risk_level: low
+    params:
+      channel: "network-incidents"
+      message: >
+        Network issue detected: {{ diagnose.root_cause }}.
+        Affected: {{ incident.metadata.host }}. Recommended action: {{ diagnose.recommendation }}.
+
+  - id: acknowledge_alert
+    action: execute
+    description: "Acknowledge the PagerDuty alert to stop escalation"
+    integration: alerting
+    method: acknowledge_alert
+    requires_approval: false
+    risk_level: low
+    params:
+      alert_id: "{{ get_pagerduty_incidents.id }}"

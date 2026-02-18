@@ -1,0 +1,84 @@
+name: Disk Space Remediation
+description: >
+  Responds to low or critically-full disk alerts. Identifies which host
+  and mount point is affected, checks for runaway log files or core dumps,
+  and guides the operator through safe cleanup steps.
+trigger: "disk_usage > 85%"
+severity: medium
+category: storage
+tags:
+  - disk
+  - storage
+  - capacity
+
+steps:
+  - id: get_disk_alerts
+    action: gather
+    description: "Confirm which hosts and mount points have disk alerts firing"
+    integration: monitoring
+    method: get_current_alerts
+    params: {}
+
+  - id: get_host_info
+    action: gather
+    description: "Retrieve instance metadata for the affected host"
+    integration: compute
+    method: get_host_info
+    params:
+      hostname: "{{ incident.metadata.host }}"
+
+  - id: get_disk_logs
+    action: gather
+    description: "Look for log rotation failures or large file creation events"
+    integration: monitoring
+    method: get_logs
+    params:
+      query: "disk full OR no space left OR log rotate"
+      host: "{{ incident.metadata.host }}"
+      limit: 50
+
+  - id: get_recent_changes
+    action: gather
+    description: "Check for recent changes that may have produced large artefacts"
+    integration: ticketing
+    method: get_recent_changes
+    params:
+      timeframe: "24h"
+
+  - id: search_kb
+    action: gather
+    description: "Find known remediation procedures for disk space issues"
+    integration: ticketing
+    method: search_knowledge_base
+    params:
+      query: "disk space cleanup runbook"
+
+  - id: diagnose
+    action: ml_decision
+    description: "Identify the source of disk consumption and recommended cleanup"
+    context:
+      - get_disk_alerts
+      - get_disk_logs
+      - get_recent_changes
+      - search_kb
+
+  - id: notify_team
+    action: execute
+    description: "Post disk space warning and diagnosis to the ops channel"
+    integration: communication
+    method: send_message
+    risk_level: low
+    params:
+      channel: "ops-alerts"
+      message: "Disk space alert on {{ incident.metadata.host }}: {{ diagnose.summary }}"
+
+  - id: create_ticket
+    action: execute
+    description: "Open a remediation ticket so the cleanup is tracked"
+    integration: ticketing
+    method: create_incident
+    risk_level: low
+    params:
+      short_description: "Disk space remediation required on {{ incident.metadata.host }}"
+      description: "{{ diagnose.root_cause }}"
+      severity: "{{ incident.severity }}"

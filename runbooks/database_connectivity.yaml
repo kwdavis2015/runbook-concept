@@ -1,0 +1,84 @@
+name: Database Connectivity Troubleshooting
+description: >
+  Investigate database connection failures or pool exhaustion. Gathers
+  DB-side alerts, application logs, and recent schema/config changes
+  before recommending remediation.
+trigger: "db_connection_errors > threshold OR connection_pool_exhausted"
+severity: high
+category: database
+tags:
+  - database
+  - connectivity
+  - connection-pool
+
+steps:
+  - id: get_db_alerts
+    action: gather
+    description: "Retrieve active alerts related to database health"
+    integration: monitoring
+    method: get_current_alerts
+    params: {}
+
+  - id: get_db_logs
+    action: gather
+    description: "Collect database and application error logs"
+    integration: monitoring
+    method: get_logs
+    params:
+      query: "connection refused OR too many connections OR connection pool"
+      service: "{{ incident.metadata.service }}"
+      limit: 100
+
+  - id: get_pagerduty_incidents
+    action: gather
+    description: "Check for open PagerDuty incidents related to this outage"
+    integration: alerting
+    method: get_active_incidents
+    params: {}
+
+  - id: get_recent_changes
+    action: gather
+    description: "Look for schema migrations or config changes in the past 4 hours"
+    integration: ticketing
+    method: get_recent_changes
+    params:
+      timeframe: "4h"
+
+  - id: search_kb
+    action: gather
+    description: "Search knowledge base for known DB connectivity resolutions"
+    integration: ticketing
+    method: search_knowledge_base
+    params:
+      query: "database connection pool exhaustion"
+
+  - id: diagnose
+    action: ml_decision
+    description: "Identify root cause (pool size, runaway queries, or infra issue)"
+    context:
+      - get_db_alerts
+      - get_db_logs
+      - get_pagerduty_incidents
+      - get_recent_changes
+      - search_kb
+
+  - id: notify_team
+    action: execute
+    description: "Alert on-call team with diagnosis summary"
+    integration: communication
+    method: send_message
+    risk_level: low
+    params:
+      channel: "incidents"
+      message: "DB connectivity issue on {{ incident.metadata.service }}: {{ diagnose.summary }}"
+
+  - id: create_ticket
+    action: execute
+    description: "Open a tracking ticket for the database incident"
+    integration: ticketing
+    method: create_incident
+    risk_level: low
+    params:
+      short_description: "Database connectivity issue — {{ incident.title }}"
+      description: "Automated runbook opened this ticket. Root cause: {{ diagnose.root_cause }}"
+      severity: "{{ incident.severity }}"

@@ -236,12 +236,24 @@ class Action(BaseModel):
     requires_approval: bool = False
     approved: bool | None = None
     approved_by: str | None = None
+    approvals: list[str] = Field(default_factory=list)
+    rejected_by: str | None = None
     integration: str | None = None
     method: str | None = None
     params: dict[str, Any] = Field(default_factory=dict)
     result: dict[str, Any] | None = None
     executed_at: datetime | None = None
     error: str | None = None
+
+
+class VerificationResult(BaseModel):
+    """Result of post-action verification."""
+
+    resolved: bool
+    active_alert_count: int = 0
+    cleared_alert_count: int = 0
+    attempts: int = 1
+    detail: str = ""
 
 
 class TimelineEntry(BaseModel):

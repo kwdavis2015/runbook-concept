@@ -48,17 +48,17 @@
 | Prompt templates | ✅ Complete | Diagnosis, resolution, summarization — structured JSON output prompts |
 | Mock ML engine (no API key needed) | ✅ Complete | Scenario-aware canned responses for all 4 scenarios with fallback defaults |
 
-### Phase 4: Orchestrator 🟡
+### Phase 4: Orchestrator ✅
 > Workflow engine connecting ML, integrations, and human approval
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Orchestrator core loop | ✅ Complete | Full lifecycle: create → classify → gather → diagnose → recommend → gate → execute → verify → summarize. Includes `run_diagnosis()` convenience method, auto-approve for low-risk actions. |
-| Runbook YAML parser | ⬜ Not started | Load and validate runbook definitions |
-| Runbook step executor | ⬜ Not started | Execute gather/action steps via integrations |
-| Human approval gate logic | ⬜ Not started | Risk-level-based approval policies |
-| Incident timeline tracking | ⬜ Not started | Record every step, finding, and action |
-| Verification loop | ⬜ Not started | Re-query after action to confirm resolution |
+| Orchestrator core loop | ✅ Complete | Full lifecycle: create → classify → gather → diagnose → recommend → gate → execute → verify → summarize. Includes `run_diagnosis()` and `run_full_workflow()` convenience methods. |
+| Runbook YAML parser | ✅ Complete | `core/runbook_engine.py` — `Runbook`, `RunbookStep` models; `RunbookParser`; `resolve_params` template resolver; 5 runbook YAML files in `runbooks/`; 77 unit tests |
+| Runbook step executor | ✅ Complete | `RunbookStepExecutor` in `core/runbook_engine.py` — `execute_step`, `execute_runbook`, `resume_runbook`; gather-failure recovery; approval gate pause/resume; `_coerce_to_dict`; nested template resolution; 52 new unit tests |
+| Human approval gate logic | ✅ Complete | `core/approval.py` — `ApprovalPolicyType` (auto/require_one/require_two), `ApprovalPolicy` dataclass, `DEFAULT_POLICY`, `ApprovalEvaluator`; multi-approver support; integrated into `Orchestrator`; 41 unit tests |
+| Incident timeline tracking | ✅ Complete | `RunbookStepExecutor._append_timeline` records every executed step; `Orchestrator._add_timeline` covers all lifecycle phases |
+| Verification loop | ✅ Complete | `verify()` returns `VerificationResult`; `verify_with_retry(max_attempts, interval_seconds)` with exponential-backoff-ready retry; `VerificationResult` model in `core/models.py` |
 
 ### Phase 5: UI / UX ⬜
 > Full Streamlit interface for conversational troubleshooting
@@ -93,7 +93,7 @@
 | Unit tests — core models | ✅ Complete | 19 tests — enums, model creation, defaults, serialization (done early in Phase 2) |
 | Unit tests — config | ✅ Complete | 9 tests — defaults, integration mode overrides (done early in Phase 2) |
 | Unit tests — integrations (mocks + registry) | ✅ Complete | 30 tests — all 5 mock providers, scenario switching, registry resolution, caching (done early in Phase 2) |
-| Unit tests — orchestrator | ⬜ Not started | |
+| Unit tests — orchestrator | ✅ Complete | 36 tests — create, gather, diagnose, recommend, approval gate (single + multi-approver), execute, verify, verify_with_retry, run_diagnosis, run_full_workflow (done in Phase 4) |
 | Unit tests — ML engine | ⬜ Not started | |
 | End-to-end test with mocks | ⬜ Not started | Full scenario walkthrough |
 | Error handling & edge cases | ⬜ Not started | |

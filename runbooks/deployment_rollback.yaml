@@ -1,0 +1,97 @@
+name: Deployment Rollback
+description: >
+  Handles a failed or partially-failed deployment. Correlates error spikes
+  with the deployment window, gathers impacted service logs, and — with
+  operator approval — triggers a rollback via the ticketing system.
+trigger: "error_rate > 5% after deployment OR health_check_failures > 3"
+severity: high
+category: deployment
+tags:
+  - deployment
+  - rollback
+  - release
+
+steps:
+  - id: get_alerts
+    action: gather
+    description: "Confirm active error-rate or health-check alerts"
+    integration: monitoring
+    method: get_current_alerts
+    params: {}
+
+  - id: get_deploy_changes
+    action: gather
+    description: "Retrieve the deployment change record that triggered this incident"
+    integration: ticketing
+    method: get_recent_changes
+    params:
+      timeframe: "1h"
+
+  - id: get_error_logs
+    action: gather
+    description: "Collect application error logs since the deployment"
+    integration: monitoring
+    method: get_logs
+    params:
+      query: "error OR exception OR 5xx OR panic"
+      service: "{{ incident.metadata.service }}"
+      limit: 100
+
+  - id: get_oncall
+    action: gather
+    description: "Identify the on-call engineer to loop in"
+    integration: alerting
+    method: get_on_call
+    params:
+      schedule: "primary"
+
+  - id: get_host_processes
+    action: gather
+    description: "Check whether the service process is running on affected hosts"
+    integration: compute
+    method: get_top_processes
+    params:
+      hostname: "{{ incident.metadata.host }}"
+      limit: 10
+
+  - id: diagnose
+    action: ml_decision
+    description: "Confirm deployment causation and decide: rollback vs hotfix"
+    context:
+      - get_alerts
+      - get_deploy_changes
+      - get_error_logs
+      - get_host_processes
+
+  - id: notify_oncall
+    action: execute
+    description: "Notify on-call and engineering channel of the deployment failure"
+    integration: communication
+    method: send_message
+    risk_level: low
+    params:
+      channel: "incidents"
+      message: >
+        Deployment failure detected for {{ incident.metadata.service }}.
+        On-call: {{ get_oncall.user }}. Recommendation: {{ diagnose.recommendation }}.
+
+  - id: add_work_note
+    action: execute
+    description: "Add ML diagnosis as a work note on the change record"
+    integration: ticketing
+    method: add_work_note
+    risk_level: low
+    params:
+      incident_id: "{{ get_deploy_changes.id }}"
+      note: "Automated diagnosis: {{ diagnose.root_cause }}"
+
+  - id: rollback
+    action: execute
+    description: "Execute rollback by restarting the service with the prior build"
+    integration: compute
+    method: restart_service
+    requires_approval: true
+    risk_level: high
+    params:
+      hostname: "{{ incident.metadata.host }}"
+      service: "{{ incident.metadata.service }}"

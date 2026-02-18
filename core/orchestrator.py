@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from app.config import Settings
+from core.approval import ApprovalEvaluator, ApprovalPolicy
 from core.models import (
     Action,
     ActionRecommendation,
@@ -22,6 +24,7 @@ from core.models import (
     RecommendationSet,
     RiskLevel,
     TimelineEntry,
+    VerificationResult,
 )
 from integrations.registry import IntegrationRegistry
 from ml.engine import MLEngine
@@ -48,10 +51,12 @@ class Orchestrator:
         settings: Settings,
         registry: IntegrationRegistry,
         ml_engine: MLEngine,
+        approval_policy: ApprovalPolicy | None = None,
     ) -> None:
         self._settings = settings
         self._registry = registry
         self._ml = ml_engine
+        self._evaluator = ApprovalEvaluator(approval_policy or ApprovalPolicy())
 
     # ------------------------------------------------------------------
     # Timeline helper
@@ -287,23 +292,32 @@ class Orchestrator:
     # ------------------------------------------------------------------
 
     def get_pending_approvals(self, incident: Incident) -> list[Action]:
-        """Return actions that require approval but haven't been approved/rejected yet."""
-        return [
-            a for a in incident.actions
-            if a.requires_approval and a.approved is None
-        ]
+        """Return actions that require human approval and haven't been decided yet."""
+        return self._evaluator.get_pending_approvals(incident.actions)
 
     def approve_action(self, incident: Incident, action_id: str, approved_by: str = "operator") -> Action | None:
-        """Approve a specific action. Returns the action or None if not found."""
+        """Record an approval for a specific action.
+
+        Supports multi-approver policies: the action's ``approved`` flag is set
+        to True only once the policy threshold is met. Returns the action, or
+        None if not found.
+        """
         for action in incident.actions:
             if action.id == action_id:
-                action.approved = True
-                action.approved_by = approved_by
+                now_approved = self._evaluator.add_approval(action, approved_by)
+                summary = (
+                    f"Action fully approved: {action.description}"
+                    if now_approved
+                    else f"Approval recorded ({len(action.approvals)} of "
+                         f"{self._evaluator.minimum_approvals_needed(action)} needed): "
+                         f"{action.description}"
+                )
                 self._add_timeline(
                     incident,
-                    "approved",
-                    f"Action approved: {action.description}",
-                    details={"action_id": action_id, "approved_by": approved_by},
+                    "approved" if now_approved else "approval_recorded",
+                    summary,
+                    details={"action_id": action_id, "approved_by": approved_by,
+                             "approvals": action.approvals},
                 )
                 return action
         return None
@@ -312,7 +326,7 @@ class Orchestrator:
         """Reject a specific action."""
         for action in incident.actions:
             if action.id == action_id:
-                action.approved = False
+                self._evaluator.reject(action, rejected_by)
                 self._add_timeline(
                     incident,
                     "rejected",
@@ -323,18 +337,14 @@ class Orchestrator:
         return None
 
     def auto_approve_low_risk(self, incident: Incident) -> list[Action]:
-        """Auto-approve actions with risk_level=low that don't require explicit approval."""
-        auto_approved = []
-        for action in incident.actions:
-            if not action.requires_approval and action.approved is None:
-                action.approved = True
-                action.approved_by = "auto"
-                auto_approved.append(action)
-                self._add_timeline(
-                    incident,
-                    "auto_approved",
-                    f"Auto-approved (low risk): {action.description}",
-                )
+        """Auto-approve all actions that the policy does not require human approval for."""
+        auto_approved = self._evaluator.apply_auto_approvals(incident.actions)
+        for action in auto_approved:
+            self._add_timeline(
+                incident,
+                "auto_approved",
+                f"Auto-approved (policy: auto): {action.description}",
+            )
         return auto_approved
 
     # ------------------------------------------------------------------
@@ -388,22 +398,29 @@ class Orchestrator:
     # 7. Verify
     # ------------------------------------------------------------------
 
-    async def verify(self, incident: Incident) -> bool:
+    async def verify(self, incident: Incident, attempt: int = 1) -> VerificationResult:
         """Re-query integrations to check if the problem is resolved.
 
-        Returns True if verification suggests resolution. For now this is
-        a simple check — in production this would re-run monitoring queries
-        and compare against the original alert thresholds.
+        Uses alert count as a simple heuristic: zero active alerts → resolved.
+        Returns a VerificationResult with counts and resolution status.
         """
         incident.status = IncidentStatus.VERIFYING
-        self._add_timeline(incident, "verifying", "Re-querying integrations to verify resolution")
+        self._add_timeline(incident, "verifying", f"Verification attempt {attempt}")
 
         try:
             monitoring = self._registry.get_provider("monitoring")
             alerts = await monitoring.get_current_alerts({})
-            # Simple heuristic: if alerts are still firing, not resolved
-            active_alerts = [a for a in alerts if a.status == "triggered"]
-            resolved = len(active_alerts) == 0
+            active = [a for a in alerts if a.status == "triggered"]
+            cleared = [a for a in alerts if a.status != "triggered"]
+            resolved = len(active) == 0
+
+            result = VerificationResult(
+                resolved=resolved,
+                active_alert_count=len(active),
+                cleared_alert_count=len(cleared),
+                attempts=attempt,
+                detail="No active alerts" if resolved else f"{len(active)} alerts still firing",
+            )
 
             if resolved:
                 incident.status = IncidentStatus.RESOLVED
@@ -413,13 +430,37 @@ class Orchestrator:
                 self._add_timeline(
                     incident,
                     "verification_failed",
-                    f"{len(active_alerts)} alerts still active",
+                    f"Attempt {attempt}: {len(active)} alerts still active",
                 )
-            return resolved
+            return result
         except Exception as e:
-            logger.warning("Verification failed: %s", e)
+            logger.warning("Verification error: %s", e)
             self._add_timeline(incident, "verification_error", f"Verification error: {e}")
-            return False
+            return VerificationResult(
+                resolved=False,
+                attempts=attempt,
+                detail=f"Verification error: {e}",
+            )
+
+    async def verify_with_retry(
+        self,
+        incident: Incident,
+        max_attempts: int = 3,
+        interval_seconds: float = 30.0,
+    ) -> VerificationResult:
+        """Retry verification up to *max_attempts* times with a delay between each.
+
+        Returns the first successful VerificationResult, or the final failed
+        result after exhausting all attempts.
+        """
+        result = VerificationResult(resolved=False)
+        for attempt in range(1, max_attempts + 1):
+            if attempt > 1:
+                await asyncio.sleep(interval_seconds)
+            result = await self.verify(incident, attempt=attempt)
+            if result.resolved:
+                break
+        return result
 
     # ------------------------------------------------------------------
     # 8. Document / summarize
@@ -448,3 +489,34 @@ class Orchestrator:
         await self.recommend(incident, diagnosis)
         self.auto_approve_low_risk(incident)
         return incident
+
+    async def run_full_workflow(
+        self,
+        problem_description: str,
+        verify_max_attempts: int = 3,
+        verify_interval_seconds: float = 30.0,
+    ) -> tuple[Incident, VerificationResult]:
+        """End-to-end workflow: diagnose → execute approved actions → verify → summarize.
+
+        All actions that auto-qualify are executed immediately. Actions that require
+        human approval are left pending (AWAITING_APPROVAL status). Only approved
+        actions are executed.
+
+        Steps:
+            1. run_diagnosis — create, classify, gather, diagnose, recommend, auto-approve
+            2. execute_approved_actions — run all auto-approved actions
+            3. verify_with_retry — confirm resolution
+            4. summarize — generate narrative
+
+        Returns:
+            (incident, verification_result)
+        """
+        incident = await self.run_diagnosis(problem_description)
+        await self.execute_approved_actions(incident)
+        verification = await self.verify_with_retry(
+            incident,
+            max_attempts=verify_max_attempts,
+            interval_seconds=verify_interval_seconds,
+        )
+        await self.summarize(incident)
+        return incident, verification
