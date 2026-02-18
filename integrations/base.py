@@ -108,7 +108,7 @@ class ComputeProvider(ABC):
         ...
 
     @abstractmethod
-    async def restart_service(self, hostname: str, service: str) -> dict:
+    async def restart_service(self, hostname: str = "", service: str = "", **kwargs) -> dict:
         ...
 
 

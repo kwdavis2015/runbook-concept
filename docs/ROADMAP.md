@@ -48,12 +48,12 @@
 | Prompt templates | ✅ Complete | Diagnosis, resolution, summarization — structured JSON output prompts |
 | Mock ML engine (no API key needed) | ✅ Complete | Scenario-aware canned responses for all 4 scenarios with fallback defaults |
 
-### Phase 4: Orchestrator ⬜
+### Phase 4: Orchestrator 🟡
 > Workflow engine connecting ML, integrations, and human approval
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Orchestrator core loop | ⬜ Not started | Classify → gather → diagnose → recommend → execute |
+| Orchestrator core loop | ✅ Complete | Full lifecycle: create → classify → gather → diagnose → recommend → gate → execute → verify → summarize. Includes `run_diagnosis()` convenience method, auto-approve for low-risk actions. |
 | Runbook YAML parser | ⬜ Not started | Load and validate runbook definitions |
 | Runbook step executor | ⬜ Not started | Execute gather/action steps via integrations |
 | Human approval gate logic | ⬜ Not started | Risk-level-based approval policies |

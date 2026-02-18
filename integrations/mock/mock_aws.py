@@ -46,7 +46,9 @@ class MockAWS(ComputeProvider, MockBase):
             for p in raw[:limit]
         ]
 
-    async def restart_service(self, hostname: str, service: str) -> dict:
+    async def restart_service(self, hostname: str = "", service: str = "", **kwargs) -> dict:
+        # Accept 'host' as alias for 'hostname' (used in ML recommendation params)
+        hostname = hostname or kwargs.get("host", "unknown")
         await self._simulate_delay()
         result = {
             "hostname": hostname,
